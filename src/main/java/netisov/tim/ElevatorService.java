@@ -5,12 +5,20 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
-
-public class ElevatorService {
+/**
+ * Service class to get elevator kicked off.
+ */
+class ElevatorService {
   private Elevator elevator;
 
-
-  public void createElevator(int speed, int floorHeight, int doorTimeout) {
+  /**
+   * Create an elevator with specified properties.
+   *
+   * @param speed       meters per second
+   * @param floorHeight height of a floor in meters
+   * @param doorTimeout timeout opening/closing door in seconds.
+   */
+  void createElevator(int speed, int floorHeight, int doorTimeout) {
     ExecutorService executorService = Executors.newSingleThreadExecutor();
     elevator = new Elevator(speed, floorHeight, doorTimeout);
     elevator.addPassFloorListener(i -> System.out.printf("Passing %d floor %s", i, System.lineSeparator()));
@@ -19,17 +27,35 @@ public class ElevatorService {
     executorService.submit(elevator);
   }
 
-  public void callElevator(List<Integer> callFromFloors) throws InterruptedException {
+  /**
+   * Calling elevator from floors.
+   *
+   * @param callFromFloors
+   * @throws InterruptedException
+   */
+  void callElevator(List<Integer> callFromFloors) throws InterruptedException {
     elevator.callFrom(callFromFloors);
 
   }
 
-  public void elevatorGoTo(List<Integer> goToFloors) throws InterruptedException {
-    elevator.goToFloors(goToFloors);
+  /**
+   * Make elevator go from inside of it.
+   *
+   * @param goToFloors
+   * @throws InterruptedException
+   */
+  void elevatorGoTo(List<Integer> goToFloors) throws InterruptedException {
+    elevator.pressedFloorButtons(goToFloors);
   }
 
-  public void setActionOnFloorArrival(Supplier<Boolean> supplier) {
-    elevator.setEnterOnFloorObserve(supplier);
+  /**
+   * Specify action on arrival on floor, somebody'd want to get in,
+   * or are there just little kids making some pranks?
+   *
+   * @param supplier
+   */
+  void setActionOnFloorArrival(Supplier<Boolean> supplier) {
+    elevator.setEnterOnFloorObserver(supplier);
   }
 
 }
