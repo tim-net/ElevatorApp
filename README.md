@@ -1,7 +1,8 @@
 # Elevator simulation Application
 Call it like this: 
-java -jar Elevator-1.0-SNAPSHOT-jar-with-dependencies.jar -s 2 -fh 3 -dt 1
-Where s - speed of elevator in meters per second, fh - floor height in meters, dt - timeout of door opening/closing in seconds.
+java -jar Elevator-1.0-SNAPSHOT-jar-with-dependencies.jar -s 2 -fh 3 -dt 1 -nf 10
+Where s - speed of elevator in meters per second, fh - floor height in meters, 
+dt - timeout of door opening/closing in seconds, -nf - number of floors.
 For more information call with flag -h or --help
 **Description:**
 When elevator is called from floors, it goes to the nearest floor, 

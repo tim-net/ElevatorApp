@@ -26,12 +26,15 @@ public class ElevatorApp {
   public static final int DEFAULT_SPEED = 2;
   public static final int DEFAULT_FLOOR_HEIGHT = 4;
   public static final int DEFAULT_DOOR_TIMEOUT = 2;
+  public static final int DEFAULT_NUM_FLOORS = 10;
   private CommandLine cmdLine;
   private final Options options;
   private Option printHelpOption;
   private Option speedOption;
   private Option floorHeightOption;
   private Option doorTimeoutOption;
+  private Option numFloorsOption;
+  private Integer numFloors;
   private volatile boolean finished;
   private final ElevatorService service;
   private Console console = System.console();
@@ -61,6 +64,7 @@ public class ElevatorApp {
     Integer speed = getOptionValue(speedOption) != null ? Integer.parseInt(getOptionValue(speedOption)) : DEFAULT_SPEED;
     Integer floorHeight = getOptionValue(floorHeightOption) != null ? Integer.parseInt(getOptionValue(floorHeightOption)) : DEFAULT_FLOOR_HEIGHT;
     Integer doorTimeout = getOptionValue(doorTimeoutOption) != null ? Integer.parseInt(getOptionValue(doorTimeoutOption)) : DEFAULT_DOOR_TIMEOUT;
+    numFloors = getOptionValue(numFloorsOption) != null ? Integer.parseInt(getOptionValue(numFloorsOption)) : DEFAULT_NUM_FLOORS;
 
     service.createElevator(speed, floorHeight, doorTimeout);
 
@@ -121,6 +125,7 @@ public class ElevatorApp {
   class UserActions {
 
     String errorMessage = "Unable to get any floors, try once more time";
+    String errorMessageFloors = "You entered wrong floor number, try once more time";
 
     void proceedUserAction(Action action) throws InterruptedException {
       switch (action) {
@@ -129,6 +134,9 @@ public class ElevatorApp {
               "Enter floor numbers from where elevator is called separated with a space then press Enter key" + System.lineSeparator());
           if (floorsCall.isEmpty()) {
             System.out.println(errorMessage);
+            proceedUserAction(Action.CALL_ELEVATOR);
+          } else if (floorsCall.stream().anyMatch(f -> f > numFloors || f <= 0)) {
+            System.out.println(errorMessageFloors);
             proceedUserAction(Action.CALL_ELEVATOR);
           } else {
             service.callElevator(floorsCall);
@@ -139,6 +147,9 @@ public class ElevatorApp {
               "Enter floor numbers  where elevator will go separated with a space then press Enter key" + System.lineSeparator());
           if (floorsToGo.isEmpty()) {
             System.out.println(errorMessage);
+            proceedUserAction(Action.GOTO_FLOORS);
+          } else if (floorsToGo.stream().anyMatch(f -> f > numFloors || f <= 0)) {
+            System.out.println(errorMessageFloors);
             proceedUserAction(Action.GOTO_FLOORS);
           } else {
             service.elevatorGoTo(floorsToGo);
@@ -254,6 +265,15 @@ public class ElevatorApp {
         .build();
 
     opts.addOption(doorTimeoutOption);
+
+
+    //num floors option
+    numFloorsOption = Option.builder("nf").longOpt("num-floors")
+        .desc("Number of floors, defaults to " + DEFAULT_DOOR_TIMEOUT)
+        .hasArg()
+        .build();
+
+    opts.addOption(numFloorsOption);
 
     return opts;
   }
