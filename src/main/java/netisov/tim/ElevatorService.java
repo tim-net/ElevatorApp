@@ -1,8 +1,6 @@
 package netisov.tim;
 
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Supplier;
 
 /**
@@ -19,12 +17,10 @@ class ElevatorService {
    * @param doorTimeout timeout opening/closing door in seconds.
    */
   void createElevator(int speed, int floorHeight, int doorTimeout) {
-    ExecutorService executorService = Executors.newSingleThreadExecutor();
     elevator = new Elevator(speed, floorHeight, doorTimeout);
     elevator.addPassFloorListener(i -> System.out.printf("Passing %d floor %s", i, System.lineSeparator()));
     elevator.addOpenDoorListener(i -> System.out.printf("Opening door on %d floor %s", i, System.lineSeparator()));
     elevator.addCloseDoorListener(i -> System.out.printf("Closing door on %d floor %s", i, System.lineSeparator()));
-    executorService.submit(elevator);
   }
 
   /**

@@ -11,20 +11,158 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import static netisov.tim.ElevatorState.DEFAULT_FLOOR;
 
 /**
  * @author Timofey Netisov <tnetisov@amt.ru>
  */
 @RunWith(JUnit4.class)
 public class ElevatorTest {
-  ExecutorService executorService = Executors.newSingleThreadExecutor();
   private final int speed = 20;
   private final int floorHeight = 2;
   private final int doorTimeout = 1;
+
+
+  @Test
+  public void createElevatorTest() {
+    Elevator elevator = getElevator();
+    Assert.assertEquals(DEFAULT_FLOOR, elevator.getState().getCurrentFloor());
+  }
+
+  @Test
+  public void callElevatorFromOneFloor() throws InterruptedException {
+    Elevator elevator = getElevator();
+    Integer floorToGo = 3;
+    Instant from = Instant.now();
+    elevator.callFrom(Stream.of(floorToGo).collect(Collectors.toList()));
+    Duration duration = Duration.between(from, Instant.now());
+    float expectedTime = (((float) floorHeight * (floorToGo - DEFAULT_FLOOR) / (float) speed)) + 2 * doorTimeout;
+    Assert.assertEquals(expectedTime * 1000, (float) duration.toMillis(), 100.0);
+
+    // give 100 milliseconds for runtime expenses because of search nearest floors
+    Assert.assertEquals(floorToGo, elevator.getState().getCurrentFloor());
+  }
+
+  @Test
+  public void callElevatorFromEmptyFloorList() throws InterruptedException {
+    Elevator elevator = getElevator();
+    elevator.callFrom(new ArrayList<>());
+    // give 100 milliseconds for runtime expenses because of search nearest floors
+    Assert.assertEquals(ElevatorState.DEFAULT_FLOOR, elevator.getState().getCurrentFloor());
+  }
+
+  @Test
+  public void callElevatorTestEnterOnFloorObserver() throws InterruptedException {
+    Elevator elevator = getElevator();
+    elevator.callFrom(Stream.of(1).collect(Collectors.toList()));
+
+
+    List<Integer> expectedPath = new ArrayList<>();
+    expectedPath.add(1);
+    expectedPath.add(2);
+    expectedPath.add(1);
+    expectedPath.add(2);
+    expectedPath.add(3);
+
+    List<Integer> actualPath = new ArrayList<>();
+    elevator.addPassFloorListener(actualPath::add);
+
+    elevator.setEnterOnFloorObserver(() -> {
+      if (elevator.getState().getCurrentFloor().equals(2)) {
+        elevator.pressedFloorButtons(Stream.of(1).collect(Collectors.toList()));
+        return true;
+      } else {
+        return false;
+      }
+    });
+
+    elevator.callFrom(Stream.of(2, 4).collect(Collectors.toList()));
+
+
+    Assert.assertEquals(new Integer(4), elevator.getState().getCurrentFloor());
+    Assert.assertArrayEquals(expectedPath.toArray(), actualPath.toArray());
+  }
+
+  @Test
+  public void callElevatorFromSeveralFloors() throws InterruptedException {
+    Elevator elevator = getElevator();
+    Integer first = 3;
+    Integer second = 5;
+    int initialFloorToCheckDuration = elevator.getState().getCurrentFloor();
+    AtomicInteger initialFloor = new AtomicInteger(elevator.getState().getCurrentFloor());
+    elevator.addPassFloorListener(f -> Assert.assertEquals((long) initialFloor.getAndIncrement(), (long) f));
+    AtomicInteger countOpenDoor = new AtomicInteger(0);
+
+    elevator.addOpenDoorListener(f -> {
+      int num = countOpenDoor.incrementAndGet();
+      if (num == 1) {
+        Assert.assertEquals((long) first, (long) f);
+      } else {
+        Assert.assertEquals((long) second, (long) f);
+      }
+    });
+
+    AtomicInteger countCloseDoor = new AtomicInteger(0);
+
+    elevator.addCloseDoorListener(f -> {
+      int num = countCloseDoor.incrementAndGet();
+      if (num == 1) {
+        Assert.assertEquals((long) first, (long) f);
+      } else {
+        Assert.assertEquals((long) second, (long) f);
+      }
+    });
+
+
+    Instant beforeInstant = Instant.now();
+
+    elevator.callFrom(Stream.of(first, second).collect(Collectors.toList()));
+
+    Duration duration = Duration.between(beforeInstant, Instant.now());
+
+    float elevatorShouldArrive = ((float) ((second - initialFloorToCheckDuration) * floorHeight) / (float) speed +
+        doorTimeout * countOpenDoor.get() + doorTimeout * countCloseDoor.get());
+
+    Assert.assertEquals(duration.toMillis(), elevatorShouldArrive * 1000, 100.0);
+    Assert.assertEquals(second, elevator.getState().getCurrentFloor());
+  }
+
+  @Test
+  public void callElevatorFromFloorsAndExpectingToComeToNearest() throws InterruptedException {
+    Elevator elevator = getElevator();
+    Integer first = 3;
+    Integer nearest = 4;
+    Integer farthest = 1;
+
+
+    elevator.callFrom(Stream.of(first).collect(Collectors.toList()));
+
+    List<Integer> expected = new ArrayList<>();
+    // expecting to go first to nearest because we don't have any floors between , then back to first
+    // because farthest is lower than first position and then to farthest through one intermediate floor (2)
+    expected.add(first);
+    expected.add(nearest);
+    expected.add(first);
+    expected.add(first - 1);
+
+    List<Integer> actual = new ArrayList<>();
+
+    elevator.addPassFloorListener(actual::add);
+
+
+    elevator.callFrom(Stream.of(nearest, farthest).collect(Collectors.toList()));
+
+
+    Assert.assertArrayEquals(expected.toArray(), actual.toArray());
+
+    Assert.assertEquals(farthest, elevator.getState().getCurrentFloor());
+
+
+  }
 
   @Test
   public void testGoToFloor() {
@@ -39,7 +177,7 @@ public class ElevatorTest {
   public void testGoToEmptyList() {
     Elevator elevator = getElevator();
     elevator.pressedFloorButtons(new ArrayList<>());
-    Assert.assertEquals(ElevatorState.DEFAULT_FLOOR, elevator.getState().getCurrentFloor());
+    Assert.assertEquals(DEFAULT_FLOOR, elevator.getState().getCurrentFloor());
   }
 
 
@@ -153,8 +291,6 @@ public class ElevatorTest {
   }
 
   private Elevator getElevator() {
-    Elevator elevator = new Elevator(speed, floorHeight, doorTimeout);
-    executorService.submit(elevator);
-    return elevator;
+    return new Elevator(speed, floorHeight, doorTimeout);
   }
 }

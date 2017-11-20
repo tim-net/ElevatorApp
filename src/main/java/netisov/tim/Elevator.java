@@ -14,13 +14,11 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 /**
- * Thread class representing an elevator.
+ * Class representing an elevator.
  */
-public final class Elevator implements Runnable {
+public final class Elevator {
   @Getter
   private final ElevatorState state = new ElevatorState();
-  @Getter
-  private WorkingState workingState = WorkingState.IDLING;
   private final int millisecondsPerFloor;
   private final int doorTimeout;
   private List<Consumer<Integer>> passFloorListeners = new ArrayList<>();
@@ -43,7 +41,6 @@ public final class Elevator implements Runnable {
    * @throws InterruptedException
    */
   public void callFrom(List<Integer> floors) throws InterruptedException {
-    workingState = WorkingState.WORKING;
     int passedFloors = 0;
     int initialFloorSize = floors.size();
     if (floors.isEmpty()) {
@@ -64,7 +61,6 @@ public final class Elevator implements Runnable {
       }
       closeDoor();
     }
-    workingState = WorkingState.IDLING;
   }
 
   /**
@@ -87,7 +83,6 @@ public final class Elevator implements Runnable {
    * @param floors
    */
   public void pressedFloorButtons(List<Integer> floors) {
-    workingState = WorkingState.WORKING;
     floors = floors.stream().distinct().collect(Collectors.toList());
     if (state.isDoorOpened()) {
       closeDoor();
@@ -142,7 +137,6 @@ public final class Elevator implements Runnable {
         closeDoor();
       }
     }
-    workingState = WorkingState.IDLING;
   }
 
 
@@ -246,14 +240,6 @@ public final class Elevator implements Runnable {
   }
 
   /**
-   * Thread waiting for commands.
-   */
-  @Override
-  public void run() {
-    //idling
-  }
-
-  /**
    * Help method to find nearest element in array.
    *
    * @param value search value
@@ -299,8 +285,4 @@ public final class Elevator implements Runnable {
     this.enterOnFloorObserve = enterOnFloorObserve;
   }
 
-  public enum WorkingState {
-    IDLING,
-    WORKING
-  }
 }
