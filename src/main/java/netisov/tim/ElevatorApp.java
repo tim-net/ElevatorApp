@@ -23,10 +23,12 @@ import java.util.stream.Collectors;
  * Main entry point class.
  */
 public class ElevatorApp {
-  public static final int DEFAULT_SPEED = 2;
-  public static final int DEFAULT_FLOOR_HEIGHT = 4;
-  public static final int DEFAULT_DOOR_TIMEOUT = 2;
-  public static final int DEFAULT_NUM_FLOORS = 10;
+  private static final int DEFAULT_SPEED = 2;
+  private static final int DEFAULT_FLOOR_HEIGHT = 4;
+  private static final int DEFAULT_DOOR_TIMEOUT = 2;
+  public static final int MIN_NUM_FLOORS = 5;
+  public static final int MAX_NUM_FLOORS = 20;
+  private static final int DEFAULT_NUM_FLOORS = 10;
   private CommandLine cmdLine;
   private final Options options;
   private Option printHelpOption;
@@ -34,7 +36,7 @@ public class ElevatorApp {
   private Option floorHeightOption;
   private Option doorTimeoutOption;
   private Option numFloorsOption;
-  private Integer numFloors;
+  private Integer numFloors = DEFAULT_NUM_FLOORS;
   private volatile boolean finished;
   private final ElevatorService service;
   private Console console = System.console();
@@ -64,8 +66,11 @@ public class ElevatorApp {
     Integer speed = getOptionValue(speedOption) != null ? Integer.parseInt(getOptionValue(speedOption)) : DEFAULT_SPEED;
     Integer floorHeight = getOptionValue(floorHeightOption) != null ? Integer.parseInt(getOptionValue(floorHeightOption)) : DEFAULT_FLOOR_HEIGHT;
     Integer doorTimeout = getOptionValue(doorTimeoutOption) != null ? Integer.parseInt(getOptionValue(doorTimeoutOption)) : DEFAULT_DOOR_TIMEOUT;
-    numFloors = getOptionValue(numFloorsOption) != null ? Integer.parseInt(getOptionValue(numFloorsOption)) : DEFAULT_NUM_FLOORS;
-
+    String numFloorsValue = getOptionValue(numFloorsOption);
+    if (numFloorsValue != null) {
+      int numIntValue = Integer.parseInt(numFloorsValue);
+      numFloors = numIntValue < MIN_NUM_FLOORS ? MIN_NUM_FLOORS : numIntValue > MAX_NUM_FLOORS ? MAX_NUM_FLOORS : numIntValue;
+    }
     service.createElevator(speed, floorHeight, doorTimeout);
 
 
@@ -269,7 +274,8 @@ public class ElevatorApp {
 
     //num floors option
     numFloorsOption = Option.builder("nf").longOpt("num-floors")
-        .desc("Number of floors, defaults to " + DEFAULT_DOOR_TIMEOUT)
+        .desc("Number of floors (from 5 to 10), defaults to " + DEFAULT_DOOR_TIMEOUT + ", if entered too low value then " +
+            "5 is used, if entered too high value then 10 is used")
         .hasArg()
         .build();
 
