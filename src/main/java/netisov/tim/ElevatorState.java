@@ -7,7 +7,8 @@ import lombok.Setter;
 @Setter
 public class ElevatorState {
 
-  public static final int DEFAULT_FLOOR = 1;
-  private int currentFloor = DEFAULT_FLOOR;
+  public static final Integer DEFAULT_FLOOR = 1;
+  private Integer currentFloor = DEFAULT_FLOOR;
+  private boolean doorOpened = false;
 
 }

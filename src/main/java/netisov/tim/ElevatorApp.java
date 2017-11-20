@@ -85,7 +85,7 @@ public class ElevatorApp {
     };
     service.setActionOnFloorArrival(actionOnFloorArrival);
     while (!finished) {
-      String choice = console.readLine("Enter c to call elevator or g to go to floors or q to quit" + System.lineSeparator());
+      String choice = console.readLine("Enter c to call elevator or g to go to floors if you are inside or q to quit" + System.lineSeparator());
       userActions.proceedUserAction(Action.getByShortcut(choice));
     }
 

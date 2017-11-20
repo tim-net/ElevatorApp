@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 /**
  * Thread class representing an elevator.
@@ -29,7 +30,7 @@ public final class Elevator implements Runnable {
 
 
   public Elevator(int speed, int floorHeight, int doorTimeout) {
-    this.millisecondsPerFloor = (floorHeight / speed) * 1000;
+    this.millisecondsPerFloor = (int) Math.floor(((double) floorHeight / (double) speed) * 1000);
     this.doorTimeout = doorTimeout;
 
   }
@@ -45,6 +46,10 @@ public final class Elevator implements Runnable {
     workingState = WorkingState.WORKING;
     int passedFloors = 0;
     int initialFloorSize = floors.size();
+    if (floors.isEmpty()) {
+      return;
+    }
+    floors = floors.stream().distinct().collect(Collectors.toList());
     floors.sort(Comparator.naturalOrder());
     while (passedFloors != initialFloorSize) {
       Integer floor = findNearestFloor(state.getCurrentFloor(), floors.toArray(new Integer[floors.size()]));
@@ -54,8 +59,8 @@ public final class Elevator implements Runnable {
       openDoor();
       if (enterOnFloorObserve != null && enterOnFloorObserve.get()) {
         // user requested to get in elevator on floor
-//        callFrom(floors);
-//        break;
+        callFrom(floors);
+        break;
       }
       closeDoor();
     }
@@ -80,15 +85,18 @@ public final class Elevator implements Runnable {
    * and we're going to get him where he wants
    *
    * @param floors
-   * @throws InterruptedException
    */
-  public void pressedFloorButtons(List<Integer> floors) throws InterruptedException {
+  public void pressedFloorButtons(List<Integer> floors) {
     workingState = WorkingState.WORKING;
-    int curFloorIndex = Collections.binarySearch(floors, state.getCurrentFloor());
-    if (curFloorIndex >= 0) {
-      floors.remove(curFloorIndex);
+    floors = floors.stream().distinct().collect(Collectors.toList());
+    if (state.isDoorOpened()) {
+      closeDoor();
+    } else if (floors.contains(state.getCurrentFloor())) {
+      openDoor();
+      closeDoor();
     }
-    if (floors.size() == 0) {
+    floors.remove(state.getCurrentFloor());
+    if (floors.isEmpty()) {
       return;
     }
 
@@ -106,11 +114,8 @@ public final class Elevator implements Runnable {
       floors.sort(Comparator.reverseOrder());
       goToFloors(floors);
     } else if (state.getCurrentFloor() < floors.get(0)) {
-      floors.sort(Comparator.reverseOrder());
       goToFloors(floors);
     } else {
-
-
       List<Integer> sub = floors.subList(-Collections.binarySearch(floors, state.getCurrentFloor()) - 1, floors.size());
 
       List<Integer> upper = new ArrayList<>(sub);
@@ -136,7 +141,6 @@ public final class Elevator implements Runnable {
         openDoor();
         closeDoor();
       }
-
     }
     workingState = WorkingState.IDLING;
   }
@@ -146,24 +150,26 @@ public final class Elevator implements Runnable {
    * Open door.
    */
   private void openDoor() {
-    fireOpenDoorEvent(state.getCurrentFloor());
     try {
       Thread.sleep(doorTimeout * 1000);
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
+    state.setDoorOpened(true);
+    fireOpenDoorEvent(state.getCurrentFloor());
   }
 
   /**
    * Close door.
    */
   private void closeDoor() {
-    fireCloseDoorEvent(state.getCurrentFloor());
     try {
       Thread.sleep(doorTimeout * 1000);
     } catch (InterruptedException e) {
       throw new RuntimeException(e);
     }
+    state.setDoorOpened(false);
+    fireCloseDoorEvent(state.getCurrentFloor());
   }
 
   /**
@@ -179,8 +185,8 @@ public final class Elevator implements Runnable {
       } catch (InterruptedException e) {
         throw new RuntimeException(e);
       }
-      state.setCurrentFloor(operationResult.apply(state.getCurrentFloor()));
       firePassFloorEvent(state.getCurrentFloor());
+      state.setCurrentFloor(operationResult.apply(state.getCurrentFloor()));
     }
   }
 
@@ -293,7 +299,7 @@ public final class Elevator implements Runnable {
     this.enterOnFloorObserve = enterOnFloorObserve;
   }
 
-  public enum WorkingState{
+  public enum WorkingState {
     IDLING,
     WORKING
   }
